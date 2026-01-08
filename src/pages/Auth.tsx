@@ -4,12 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dumbbell, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Dumbbell, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "A senha deve ter pelo menos 6 caracteres");
+const crefSchema = z.string().min(6, "CREF inválido").regex(/^CREF\s?\d+/, "CREF deve seguir o formato: CREF XXXXX/UF");
 
 type UserRole = "student" | "trainer";
 
@@ -17,10 +18,12 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [cref, setCref] = useState("");
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; cref?: string; confirmEmail?: string }>({});
   
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
@@ -33,7 +36,7 @@ const Auth = () => {
   }, [user, loading, navigate]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string; fullName?: string } = {};
+    const newErrors: { email?: string; password?: string; fullName?: string; cref?: string; confirmEmail?: string } = {};
     
     try {
       emailSchema.parse(email);
@@ -53,6 +56,21 @@ const Auth = () => {
     
     if (!isLogin && !fullName.trim()) {
       newErrors.fullName = "Nome completo é obrigatório";
+    }
+
+    // Trainer-specific validations
+    if (!isLogin && selectedRole === "trainer") {
+      if (email !== confirmEmail) {
+        newErrors.confirmEmail = "Os emails não coincidem";
+      }
+      
+      try {
+        crefSchema.parse(cref.trim());
+      } catch (e) {
+        if (e instanceof z.ZodError) {
+          newErrors.cref = e.errors[0].message;
+        }
+      }
     }
     
     setErrors(newErrors);
@@ -87,7 +105,7 @@ const Auth = () => {
           navigate("/");
         }
       } else {
-        const { error } = await signUp(email, password, fullName, selectedRole);
+        const { error } = await signUp(email, password, fullName, selectedRole, selectedRole === "trainer" ? cref.trim() : undefined);
         if (error) {
           let message = "Erro ao criar conta";
           if (error.message.includes("already registered")) {
@@ -103,7 +121,12 @@ const Auth = () => {
             title: "Conta criada!",
             description: "Sua conta foi criada com sucesso.",
           });
-          navigate("/");
+          // Redirect trainers to profile page to complete setup
+          if (selectedRole === "trainer") {
+            navigate("/trainer/profile");
+          } else {
+            navigate("/");
+          }
         }
       }
     } catch (error) {
@@ -208,6 +231,30 @@ const Auth = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* CREF field for trainers */}
+                  {selectedRole === "trainer" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="cref">CREF (Registro Profissional)</Label>
+                      <div className="relative">
+                        <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="cref"
+                          type="text"
+                          placeholder="CREF 012345-G/SP"
+                          value={cref}
+                          onChange={(e) => setCref(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      {errors.cref && (
+                        <p className="text-sm text-destructive">{errors.cref}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Obrigatório para trainers. Exemplo: CREF 012345-G/SP
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -228,6 +275,27 @@ const Auth = () => {
                   <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
+
+              {/* Confirm email for trainers */}
+              {!isLogin && selectedRole === "trainer" && (
+                <div className="space-y-2">
+                  <Label htmlFor="confirmEmail">Confirmar Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="confirmEmail"
+                      type="email"
+                      placeholder="Confirme seu email"
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  {errors.confirmEmail && (
+                    <p className="text-sm text-destructive">{errors.confirmEmail}</p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
