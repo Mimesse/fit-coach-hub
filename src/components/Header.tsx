@@ -1,9 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Dumbbell } from "lucide-react";
+import { Menu, X, Dumbbell, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, userRole, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -34,8 +43,22 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost">Entrar</Button>
-            <Button variant="default">Cadastrar</Button>
+            {user ? (
+              <>
+                <span className="text-muted-foreground text-sm">
+                  {userRole === "trainer" ? "Trainer" : "Aluno"}
+                </span>
+                <Button variant="ghost" onClick={handleSignOut} className="gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate("/auth")}>Entrar</Button>
+                <Button variant="default" onClick={() => navigate("/auth")}>Cadastrar</Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -61,8 +84,22 @@ const Header = () => {
                 Para Trainers
               </a>
               <div className="flex flex-col gap-2 pt-4">
-                <Button variant="ghost" className="w-full">Entrar</Button>
-                <Button variant="default" className="w-full">Cadastrar</Button>
+                {user ? (
+                  <>
+                    <span className="text-muted-foreground text-sm text-center">
+                      {userRole === "trainer" ? "Trainer" : "Aluno"}
+                    </span>
+                    <Button variant="ghost" onClick={handleSignOut} className="w-full gap-2">
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" className="w-full" onClick={() => navigate("/auth")}>Entrar</Button>
+                    <Button variant="default" className="w-full" onClick={() => navigate("/auth")}>Cadastrar</Button>
+                  </>
+                )}
               </div>
             </nav>
           </div>
