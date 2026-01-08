@@ -20,9 +20,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-hero rounded-lg flex items-center justify-center shadow-glow">
-              <Dumbbell className="w-6 h-6 text-primary-foreground" />
-            </div>
+            
             <span className="font-display text-xl md:text-2xl font-bold tracking-tight">
               My<span className="text-gradient">Personal</span>Trainer
             </span>
