@@ -94,9 +94,14 @@ const Auth = () => {
         const { error } = await signIn(email, password);
         if (error) {
           let message = "Erro ao fazer login";
-          if (error.message.includes("Invalid login credentials")) {
+          if (error.message?.includes("Invalid login credentials")) {
             message = "Email ou senha incorretos";
+          } else if (error.message?.includes("Email not confirmed")) {
+            message = "Verifique seu email para confirmar a conta";
+          } else if (error.message?.includes("400")) {
+            message = "Erro na autenticação. Verifique suas credenciais e tente novamente ou crie uma nova conta.";
           }
+          console.error("Login error:", error);
           toast({
             variant: "destructive",
             title: "Erro",
