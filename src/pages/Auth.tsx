@@ -25,15 +25,20 @@ const Auth = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; cref?: string; confirmEmail?: string }>({});
   
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, loading, userRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && user) {
-      navigate("/");
+      if (userRole === "trainer") {
+        navigate("/trainer/profile");
+      } else if (userRole === "student") {
+        navigate("/");
+      }
+      // if userRole is null we wait for it to be fetched in AuthContext
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, userRole]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; fullName?: string; cref?: string; confirmEmail?: string } = {};
@@ -102,7 +107,7 @@ const Auth = () => {
             title: "Bem-vindo!",
             description: "Login realizado com sucesso.",
           });
-          navigate("/");
+          // Navigation handled by useEffect after userRole is available
         }
       } else {
         const { error } = await signUp(email, password, fullName, selectedRole, selectedRole === "trainer" ? cref.trim() : undefined);

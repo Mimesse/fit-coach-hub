@@ -87,36 +87,95 @@ const TrainerProfile = () => {
     if (!file || !user) return;
 
     setUploading(true);
-    
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      // store file at bucket root (avoid duplicate 'avatars/avatars/...' URLs)
+      const filePath = fileName;
 
-    if (uploadError) {
+      let uploadError = null;
+      let uploadData = null;
+
+      // Try to upload
+      const uploadResult = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      uploadError = uploadResult.error;
+      uploadData = uploadResult.data;
+
+      // If bucket doesn't exist, try to create it
+      if (uploadError && uploadError.message?.includes("Bucket not found")) {
+        console.warn("Avatars bucket not found, attempting to create...");
+        
+        try {
+          await supabase.storage.createBucket("avatars", {
+            public: true,
+          });
+          console.log("Bucket created successfully");
+
+          // Retry upload after creating bucket
+          const retryResult = await supabase.storage
+            .from("avatars")
+            .upload(filePath, file, { upsert: true, contentType: file.type });
+
+          uploadError = retryResult.error;
+          uploadData = retryResult.data;
+        } catch (bucketErr) {
+          console.error("Failed to create bucket:", bucketErr);
+          toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "O bucket 'avatars' não foi encontrado e não foi possível criá-lo. Veja SETUP_BUCKETS.md para instruções.",
+          });
+          setUploading(false);
+          return;
+        }
+      }
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: uploadError.message || "Erro ao fazer upload da imagem",
+        });
+        setUploading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      if (!urlData || !urlData.publicUrl) {
+        console.error("getPublicUrl returned no url", urlData);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Não foi possível obter a URL pública da imagem",
+        });
+        setUploading(false);
+        return;
+      }
+
+      setProfile({ ...profile, avatar_url: urlData.publicUrl });
+
+      toast({
+        title: "Sucesso",
+        description: "Imagem carregada com sucesso!",
+      });
+    } catch (err) {
+      console.error("Unexpected upload error:", err);
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Erro ao fazer upload da imagem",
+        description: "Erro ao enviar a imagem",
       });
+    } finally {
       setUploading(false);
-      return;
     }
-
-    const { data: urlData } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    setProfile({ ...profile, avatar_url: urlData.publicUrl });
-    setUploading(false);
-    
-    toast({
-      title: "Sucesso",
-      description: "Imagem carregada com sucesso!",
-    });
   };
 
   const handleSave = async () => {

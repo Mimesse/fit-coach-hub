@@ -46,6 +46,12 @@ const Header = () => {
                 <span className="text-muted-foreground text-sm">
                   {userRole === "trainer" ? "Trainer" : "Aluno"}
                 </span>
+                {userRole === "trainer" && (
+                  <Button variant="ghost" onClick={() => navigate("/trainer/profile")} className="gap-2">
+                    <Dumbbell className="w-4 h-4" />
+                    Perfil
+                  </Button>
+                )}
                 <Button variant="ghost" onClick={handleSignOut} className="gap-2">
                   <LogOut className="w-4 h-4" />
                   Sair
@@ -87,6 +93,12 @@ const Header = () => {
                     <span className="text-muted-foreground text-sm text-center">
                       {userRole === "trainer" ? "Trainer" : "Aluno"}
                     </span>
+                    {userRole === "trainer" && (
+                      <Button variant="ghost" className="w-full" onClick={() => { setIsMenuOpen(false); navigate('/trainer/profile'); }}>
+                        <Dumbbell className="w-4 h-4" />
+                        Perfil
+                      </Button>
+                    )}
                     <Button variant="ghost" onClick={handleSignOut} className="w-full gap-2">
                       <LogOut className="w-4 h-4" />
                       Sair
