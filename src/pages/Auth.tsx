@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dumbbell, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "A senha deve ter pelo menos 6 caracteres");
@@ -115,11 +116,32 @@ const Auth = () => {
           // Navigation handled by useEffect after userRole is available
         }
       } else {
+        // Check if CREF is already registered for trainers
+        if (selectedRole === "trainer") {
+          const { data: existingCref } = await supabase
+            .from("profiles")
+            .select("cref")
+            .eq("cref", cref.trim())
+            .maybeSingle();
+
+          if (existingCref) {
+            toast({
+              variant: "destructive",
+              title: "CREF Já Cadastrado",
+              description: "Este CREF já está vinculado a outra conta. Verifique o número ou entre em contato com o suporte.",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const { error } = await signUp(email, password, fullName, selectedRole, selectedRole === "trainer" ? cref.trim() : undefined);
         if (error) {
           let message = "Erro ao criar conta";
           if (error.message.includes("already registered")) {
             message = "Este email já está cadastrado";
+          } else if (error.message.includes("profiles_cref_unique")) {
+            message = "Este CREF já está cadastrado";
           }
           toast({
             variant: "destructive",
@@ -129,14 +151,15 @@ const Auth = () => {
         } else {
           toast({
             title: "Conta criada!",
-            description: "Sua conta foi criada com sucesso.",
+            description: "Verifique seu email para confirmar a conta antes de fazer login.",
           });
-          // Redirect trainers to profile page to complete setup
-          if (selectedRole === "trainer") {
-            navigate("/trainer/profile");
-          } else {
-            navigate("/");
-          }
+          // Show login form after signup
+          setIsLogin(true);
+          setEmail("");
+          setPassword("");
+          setFullName("");
+          setCref("");
+          setConfirmEmail("");
         }
       }
     } catch (error) {
